@@ -20,14 +20,13 @@ class MinCostFlowsSolver(MethodView):
         ends = data['ends']
         costs = data['costs']
         supplies = data['supplies']
-        source = data['source']
-        sink = data['sink']
+        capacities = data['capacities']
 
         min_cost_flow = pywrapgraph.SimpleMinCostFlow()
 
         for i in range(len(starts)):
             min_cost_flow.AddArcWithCapacityAndUnitCost(
-                starts[i], ends[i], 1, costs[i])
+                starts[i], ends[i], capacities[i], costs[i])
 
         for i in range(len(supplies)):
             min_cost_flow.SetNodeSupply(i, supplies[i])

@@ -1,4 +1,5 @@
 from flask import Flask, jsonify
+from flask_cors import CORS
 from errors import ErrorHandler, ExceptionHandler
 from ortools_packages.bpp2d import Bpp2dSolver
 from ortools_packages.bpp import BppSolver
@@ -11,6 +12,7 @@ import os
 app = Flask(__name__)
 basedir = os.path.abspath(os.path.dirname(__file__))
 error_handler = ErrorHandler()
+CORS(app)
 
 #region Error handlers
 @app.errorhandler(ExceptionHandler)
