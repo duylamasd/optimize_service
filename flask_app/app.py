@@ -52,4 +52,4 @@ app.add_url_rule('/min_cost', view_func = linearView, methods = ['POST'])
 #endregion
 
 if __name__ == '__main__':
-    app.run(port=4000, debug = False)
+    app.run(port = 4000, debug = True)
