@@ -4,7 +4,7 @@ from errors import ErrorHandler, ExceptionHandler
 from ortools_packages.bpp2d import Bpp2dSolver
 from ortools_packages.bpp import BppSolver
 from ortools_packages.mip import MipSolver
-from ortools_packages.vrp import VrpSolver
+from ortools_packages.vrp import VrpSolver, DistanceMatrix
 from ortools_packages.linear import MinCostFlowsSolver
 
 import os
@@ -46,6 +46,9 @@ app.add_url_rule('/mip', view_func = mipView, methods = ['POST'])
 
 vrpView = VrpSolver.as_view('vrpView')
 app.add_url_rule('/vrp', view_func = vrpView, methods = ['POST'])
+
+distanceMatrixView = DistanceMatrix.as_view('distanceMatrixView')
+app.add_url_rule('/distances', view_func = distanceMatrixView, methods = ['POST'])
 
 linearView = MinCostFlowsSolver.as_view('linearView')
 app.add_url_rule('/min_cost', view_func = linearView, methods = ['POST'])

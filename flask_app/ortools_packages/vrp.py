@@ -16,6 +16,7 @@ from errors import ExceptionHandler
 
 DISTANCE_INF = 1000
 
+
 class Evaluator:
     """
     Callbacks handler. This contained these methods.
@@ -24,11 +25,13 @@ class Evaluator:
     - Distance callback.
     """
 
-    def total_time(self, demands, locations, loadings, unloadings, speed = 40):
+    def total_time(self, demands, locations, loadings, unloadings, speed=40):
         def service_time_return(a, b):
             return loadings[a] + unloadings[a]
+
         def transit_time_return(a, b):
             return (self.distance(locations[a], locations[b]) / speed) * 3600
+
         def total_time_return(a, b):
             if transit_time_return(a, b) == 0:
                 return 0
@@ -42,7 +45,8 @@ class Evaluator:
         # haversine formula
         dlon = lon2 - lon1
         dlat = lat2 - lat1
-        s = (np.sin(dlat / 2) ** 2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon / 2) ** 2)
+        s = (np.sin(dlat / 2) ** 2 + np.cos(lat1)
+             * np.cos(lat2) * np.sin(dlon / 2) ** 2)
         c = 2 * np.arcsin(np.sqrt(s))
 
         # 6367 km is the radius of the Earth
@@ -68,7 +72,7 @@ class VrpSolver(MethodView):
     """
 
     def post(self):
-        #region Input data
+        # region Input data
         data = request.get_json()
         allow_drop = data['allow_drop']
         departure_times = data['departure_times']
@@ -99,44 +103,48 @@ class VrpSolver(MethodView):
         first_vendor_index = data['first_vendor_index']
 
         num_vehicles = len(vehicle_capacities)
-        #endregion
+        # endregion
 
-        #region Create evaluators and add constrains.
+        # region Create evaluators and add constrains.
         evaluator = Evaluator()
         dist_callback = evaluator.distance_callback(locations, matrix)
         demands_callback = evaluator.demands_calculate(demands)
         total_time_callbacks = []
         for i in range(num_vehicles):
-            total_time_callbacks.append(deepcopy(evaluator.total_time(demands = demands, locations = locations, loadings = loadings, unloadings = unloadings, speed = velocities[i])))
+            total_time_callbacks.append(deepcopy(evaluator.total_time(
+                demands=demands, locations=locations, loadings=loadings, unloadings=unloadings, speed=velocities[i])))
 
-        routing = pywrapcp.RoutingModel(num_locations, num_vehicles, departure_depots, return_depots)
+        routing = pywrapcp.RoutingModel(
+            num_locations, num_vehicles, departure_depots, return_depots)
         routing.SetArcCostEvaluatorOfAllVehicles(dist_callback)
         for index, cost in enumerate(vehicle_costs):
             routing.SetFixedCostOfVehicle(cost, index)
 
         search_parameters = pywrapcp.RoutingModel.DefaultSearchParameters()
-        search_parameters.first_solution_strategy = (routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC)
-        search_parameters.local_search_metaheuristic  = (routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
+        search_parameters.first_solution_strategy = (
+            routing_enums_pb2.FirstSolutionStrategy.AUTOMATIC)
+        search_parameters.local_search_metaheuristic = (
+            routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
 
         search_parameters.time_limit_ms = 30 * 1000
 
-        routing.AddDimensionWithVehicleCapacity(evaluator = demands_callback,
-                                                slack_max = 0,
-                                                vehicle_capacities = vehicle_capacities,
-                                                fix_start_cumul_to_zero = True,
-                                                name = "capacity")
+        routing.AddDimensionWithVehicleCapacity(evaluator=demands_callback,
+                                                slack_max=0,
+                                                vehicle_capacities=vehicle_capacities,
+                                                fix_start_cumul_to_zero=True,
+                                                name="capacity")
 
-        routing.AddDimensionWithVehicleTransits(evaluators = total_time_callbacks,
-                                                slack_max = horizon,
-                                                capacity = horizon,
-                                                fix_start_cumul_to_zero = False,
-                                                name = "time")
+        routing.AddDimensionWithVehicleTransits(evaluators=total_time_callbacks,
+                                                slack_max=horizon,
+                                                capacity=horizon,
+                                                fix_start_cumul_to_zero=False,
+                                                name="time")
 
-        routing.AddDimension(evaluator = dist_callback,
-                            slack_max = 0,
-                            capacity = 1000,
-                            fix_start_cumul_to_zero = True,
-                            name = "distance")
+        routing.AddDimension(evaluator=dist_callback,
+                             slack_max=0,
+                             capacity=1000,
+                             fix_start_cumul_to_zero=True,
+                             name="distance")
 
         time_dimension = routing.GetDimensionOrDie("time")
         for location in range(num_locations):
@@ -159,19 +167,20 @@ class VrpSolver(MethodView):
         for group in groups:
             routing.AddSoftSameVehicleConstraint(group, 40)
 
-
         min_load = 1
         capacity_dimension = routing.GetDimensionOrDie("capacity")
 
         for vehicle in range(num_vehicles):
             if vehicle < first_vendor_index:
                 if allow_drop > 0:
-                    capacity_dimension.CumulVar(routing.End(vehicle)).RemoveInterval(0, min_weights[vehicle])
+                    capacity_dimension.CumulVar(routing.End(
+                        vehicle)).RemoveInterval(0, min_weights[vehicle])
                 else:
-                    capacity_dimension.CumulVar(routing.End(vehicle)).RemoveInterval(1, min_weights[vehicle])
+                    capacity_dimension.CumulVar(routing.End(
+                        vehicle)).RemoveInterval(1, min_weights[vehicle])
             else:
-                capacity_dimension.CumulVar(routing.End(vehicle)).RemoveInterval(1, min_weights[vehicle])
-
+                capacity_dimension.CumulVar(routing.End(
+                    vehicle)).RemoveInterval(1, min_weights[vehicle])
 
         assignment = routing.SolveWithParameters(search_parameters)
         if assignment:
@@ -220,7 +229,7 @@ class VrpSolver(MethodView):
                     'routes': routes
                 }
                 json_data.append(vehicle_json_data)
-            
+
             # parse results to json
             json_object = {
                 'total': assignment.ObjectiveValue(),
@@ -230,4 +239,38 @@ class VrpSolver(MethodView):
             return jsonify(json_object)
         else:
             return 'No solution found.'
-        #endregion
+        # endregion
+
+
+class DistanceMatrix(MethodView):
+    """
+    Distance matrix from list of locations.
+    """
+
+    @staticmethod
+    def distance(a, b):
+        """
+        Calculate distance between location a and location b.
+        """
+
+        lat1, lng1, lat2, lng2 = map(np.radians, [a['lat'], a['lng'], b['lat'], b['lng']])
+        dlng = lng2 - lng1
+        dlat = lat2 - lat1
+        s = (np.sin(dlat / 2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlng / 2)**2)
+        c = 2 * np.arcsin(np.sqrt(s))
+
+        km = 6367 * c
+        return km * 1.4
+
+    def post(self):
+        data = request.get_json()
+        locations = data['locations']
+
+        response = { 'matrix': [] }
+        for first_loc in locations:
+            row = []
+            for second_loc in locations:
+                row.append(self.distance(first_loc, second_loc))
+            response['matrix'].append(row)
+
+        return jsonify(response)
