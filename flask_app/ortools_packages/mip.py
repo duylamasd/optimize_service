@@ -36,19 +36,19 @@ class MipSolver(MethodView):
             x = [solver.IntVar(0, 1000, "x%i" % i) for i in range(num_trucks)]
 
             formula = x[0] * c[0]
-            for i in range(num_trucks):
+            for i in range(1, num_trucks):
                 formula = formula + (x[i] * c[i])
             max_weight = max(c)
             solver.Add(formula >= demand)
             solver.Add(formula < (demand + max_weight))
 
             cost_formula = x[0] * costs[0]
-            for i in range(num_trucks):
+            for i in range(1, num_trucks):
                 cost_formula = cost_formula + (x[i] * costs[i])
             obj_expr = solver.IntVar(0, 100000000, 'obj_expr')
             solver.Add(obj_expr == cost_formula)
             objective = solver.Minimize(obj_expr, 1)
-            decision_builder = solver.Phase(x, solver.CHOOSE_MIN_SIZE, solver.ASSIGN_CENTER_VALUE)
+            decision_builder = solver.Phase(x, solver.CHOOSE_LOWEST_MIN, solver.ASSIGN_MIN_VALUE)
 
             collector = solver.LastSolutionCollector()
             for i in x: collector.Add(i)
